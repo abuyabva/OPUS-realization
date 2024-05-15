@@ -76,9 +76,9 @@ def opus_s(operators, goal_state):
         changed_nodes = new_nodes.copy()
         for node in new_nodes:
             changed_nodes.discard(node)
+            if node.mostRecentOperator in remaining_operators:
+                del remaining_operators[remaining_operators.index(node.mostRecentOperator)]
             node.active = remaining_operators.copy()
-            if node.mostRecentOperator in node.active:
-                del node.active[node.active.index(node.mostRecentOperator)]
             changed_nodes.add(node)
         new_nodes = changed_nodes
         for node in new_nodes:
@@ -99,18 +99,17 @@ def _value(node, goal_state):
         return val
 
 
-def _optimistic_value(node, operators, goal_state, value=_value):
+def _optimistic_value(node, operators, goal_state, indexes, value=_value):
     best_value = float("-inf")
     for i in range(1, len(operators) + 1):
         for el in list(combinations(operators, i)):
             if not node.state:
-                # next_state = delimiter.join(*el)
                 next_state = [el[i] for i in range(len(el))]
             else:
-                # next_state = delimiter.join([node.state, *el])
                 next_state = node.state.copy()
                 for j in range(len(el)):
-                    next_state.append(el[j])
+                    next_state = add_operator(next_state.copy(), el[j], indexes)
+                    # next_state.append(el[j])
             val = value(Node(next_state, operators), goal_state)
             if val == float("inf"):
                 return val
@@ -135,22 +134,21 @@ def opus_o(operators, goal_state, value=_value, optimistic_value=_optimistic_val
             if value(child, goal_state) > value(best, goal_state):
                 best = child
                 for i in range(len(open_list) - 1, -1, -1):
-                    if (optimistic_value(open_list[i], open_list[i].active, goal_state, value=value)
+                    if (optimistic_value(open_list[i], open_list[i].active, goal_state, indexes, value=value)
                             < value(best, goal_state)):
                         del open_list[i]
             new_nodes.add(child)
         new_nodes, remaining_operators = check(new_nodes, remaining_operators, goal_state, indexes)
-        # сортировка new_nodes по уменьшению optimistic_value(n, remaining_operators)
         changed_nodes = new_nodes.copy()
         for node in new_nodes:
             changed_nodes.discard(node)
+            if node.mostRecentOperator in remaining_operators:
+                del remaining_operators[remaining_operators.index(node.mostRecentOperator)]
             node.active = remaining_operators.copy()
-            if node.mostRecentOperator in node.active:
-                del node.active[node.active.index(node.mostRecentOperator)]
             changed_nodes.add(node)
         new_nodes = changed_nodes
         for node in new_nodes:
-            if (optimistic_value(node, node.active, goal_state, value=value) >
+            if (optimistic_value(node, node.active, goal_state, indexes, value=value) >=
                     value(best, goal_state)):
                 open_list.append(node)
     return best
